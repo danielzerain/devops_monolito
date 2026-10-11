@@ -1,0 +1,8 @@
+target
+.sonar
+#sqlite databases
+*.db 
+
+.project
+.classpath
+.settings
