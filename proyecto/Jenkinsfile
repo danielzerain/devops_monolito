@@ -1,0 +1,98 @@
+pipeline {
+    agent any
+    tools {
+        maven 'maven_310'
+        jdk 'jdk_17'
+    }
+    environment {
+        HOME = "${WORKSPACE}"
+        NEXUS_CREDENTIALS = credentials('nexus_user')
+    }   
+    stages {
+        stage('Build') {
+            steps {
+                git branch: 'main', url: 'https://github.com/danielzerain/devops_monolito.git'
+                sh 'mvn clean compile -B -ntp'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'mvn test -B -ntp'
+            }
+            post {
+                success {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+        stage('Coverage') {
+            steps {
+                sh 'mvn jacoco:report -B -ntp'
+            }
+            post {
+                success {
+                    recordCoverage(tools: [[parser: 'JACOCO']])
+                }
+            }
+        }
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests -B -ntp'
+            }
+        }
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube'){
+                    sh 'env | sort'
+                    script {
+                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar'
+                    }
+                }
+            }
+        }
+        stage("Quality Gate"){
+            steps{
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        stage('Nexus') {
+            steps {
+                script {
+
+                    sh 'env | sort'
+
+                    def pom = readMavenPom file: 'pom.xml'
+                    println pom
+
+                    nexusPublisher nexusInstanceId: 'nexuscd',
+                    nexusRepositoryId: 'app_monolitica',
+                    packages: [[$class: 'MavenPackage',
+                        mavenAssetList: [
+                            [
+                                classifier: '', 
+                                extension: '', 
+                                filePath: "target/${pom.artifactId}-${pom.version}.${pom.packaging}"
+                            ]
+                        ],
+                        mavenCoordinate: [
+                            groupId: "${pom.groupId}",
+                            artifactId: "${pom.artifactId}",
+                            packaging: "${pom.packaging}",
+                            version: "${pom.version}"
+                        ]
+                    ]]
+                }
+            }
+        }  
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+}
