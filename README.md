@@ -310,6 +310,9 @@ stage('Build') {
   - `-ntp` (*No Transfer Progress*): Suprime los logs de descarga de dependencias, reduciendo el ruido en la consola.
 
 #### Stage 2: Test (Pruebas Unitarias)
+
+![stages](capturas/pruebas.png)
+
 ```groovy
 stage('Test') {
     steps {
@@ -324,6 +327,8 @@ stage('Test') {
 ```
 - Ejecuta los tests unitarios con Maven Surefire.
 - En caso de éxito, la sección `post { success }` procesa los archivos XML resultantes y publica los reportes de pruebas en la interfaz web de Jenkins, registrando tendencias históricas de aprobación y fallos.
+
+![stages](capturas/test.png)
 
 #### Stage 3: Coverage (Cobertura de Código)
 ```groovy
@@ -341,7 +346,7 @@ stage('Coverage') {
 - Genera el reporte de cobertura mediante el plugin de **JaCoCo**.
 - Mediante la función `recordCoverage`, Jenkins procesa la métrica de cobertura de líneas, ramas e instrucciones, permitiendo visualizar la evolución del porcentaje cubierto directamente en el job.
 
-![stages](capturas/pruebas.png)
+![stages](capturas/coverage.png)
 
 #### Stage 4: Package (Empaquetado)
 ```groovy
